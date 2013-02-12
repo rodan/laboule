@@ -1,6 +1,5 @@
 
  * description
-
  laboule - iptables jail chain manager
   this daemonized bash script performs the following tasks:
 
@@ -29,6 +28,9 @@
   the IP does not receive a DROP rule, but a REDIRECT to another port 
   where a tarpit/honeypot is listening. 
   ipv6 has not been thoroughly tested with laboule-tarpit.
+
+  syncronous syslog parsing is also available, see laboule_syslog_parser.sh
+  for an example
 
   * dependencies
    - iptables (with optional ipv6 support)
