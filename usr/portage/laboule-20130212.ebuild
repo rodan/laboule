@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header: Exp $
 
+inherit eutils user
+
 DESCRIPTION="tool to easily ban/tarpit unpolite IPs via iptables/ip6tables"
 HOMEPAGE="http://github.com/rodan/laboule"
 SRC_URI="http://mirrors.bu.avira.com/gentoo/distfiles/${P}.tar.bz2"
@@ -25,19 +27,9 @@ src_install() {
 
 	cp -R "${S}/" "${D}/local/adm/" || die "Install failed"
 
-	dodir /var/service/laboule
-	exeinto /var/service/laboule
-	doexe service/laboule/run || die "fail"
-	dodir /var/service/laboule/log
-	exeinto /var/service/laboule/log
-	doexe service/laboule/log/run
-
-	dodir /var/service/laboule-tarpit
-	exeinto /var/service/laboule-tarpit
-	doexe service/laboule-tarpit/run || die "fail"
-	dodir /var/service/laboule-tarpit/log
-	exeinto /var/service/laboule-tarpit/log
-	doexe service/laboule-tarpit/log/run
+	dodir /var/service
+	cp -R "${S}/service/laboule/" "${D}/var/service/"
+	cp -R "${S}/service/laboule-tarpit/" "${D}/var/service/"
 
 	dodir /etc/laboule
 	insinto /etc/laboule
@@ -49,4 +41,9 @@ src_install() {
 	dodir /opt/bin
 	dosym /local/adm/laboule/bin/laboule /opt/bin/laboule
 	dosym /local/adm/laboule/bin/laboule-tarpit /opt/bin/laboule-tarpit
+}
+
+pkg_setup() {
+	enewgroup laboule
+	enewuser laboule -1 -1 /var/log/laboule laboule
 }

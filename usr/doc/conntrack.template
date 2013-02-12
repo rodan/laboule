@@ -3,7 +3,7 @@
 l_socket="/var/lib/laboule/msg"
 
 # this exclusion list is separate from jail.ignore since grep can't handle CIDR addresses
-exclude="src=(127.0.0.1|10.10.10.10).*src="
+exclude="src=(127.0.0.1)|(10.10.10.10).*src="
 
 rm -f /dev/shm/conntrack
 
