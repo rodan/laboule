@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# logtail is part of the logsentry package
+
+l_socket="/var/lib/laboule/msg"
+
+exclude="SRC=(127.0.0.1|notme_notme)"
+
+logtail /var/log/current/firewall.log | grep -iE 'Shorewall.*(REJECT)|(DROP)' | grep -Ev "${exclude}" |  sed 's|.*SRC=\([0-9a-fA-F\:\.]*\) .*DPT=\([0-9]*\) .*|\1 \2|' | while read ip port; do
+    echo "${ip} firewall count ${port}" > ${l_socket}
+done
+
+

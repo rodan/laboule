@@ -1,0 +1,11 @@
+
+# enter here all the IPs that you never want to ban
+# you can either use unique IPs or subnets in CIDR notation
+
+# localhost
+127.0.0.1
+
+# never ban the toaster
+#10.10.10.0/24
+
+

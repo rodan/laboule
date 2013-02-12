@@ -1,0 +1,50 @@
+
+# iptables chain name that will be used for filtering
+chain='jail'
+
+# iptables chain that will be used by laboule.
+# this can either be 'INPUT' if there is not much of a firewall installed or 
+# something like 'net2fw' in case of shorewall.
+calling_chain='net2fw'
+
+# iptables locations
+iptables='/sbin/iptables'
+ip6tables='/sbin/ip6tables'
+
+# 1 - only ban/unban activity
+# 2 - info
+# 3 - debug
+log_level=1
+
+# Profiles
+# you must define a profile for each service you wish to enforce a ban policy on.
+# the 'count' or 'ban' command that is sent to laboule via the socket will contain
+# the profile name, for example:
+
+# echo "10.34.56.78 wl count" > /var/lib/laboule/msg
+#   '10.34.56.78' is the IP that will be counted
+#   'wl' is the profile
+#   'count' is the command itself
+
+
+# for each profile you have to define
+
+# for how much time (in minutes) to keep track of user activity
+# default 60
+# $PROFILE_deny_buffer_period
+
+# for how much time (in seconds) to keep an IP in a banned state
+# default 3600
+# $PROFILE_ban_period
+
+# after how many policy violations to ban an IP
+# default 5
+# $PROFILE_ban_excuses
+
+# web login example profile
+
+wl_deny_buffer_period=240
+wl_ban_period=3600
+wl_ban_excuses=10
+
+

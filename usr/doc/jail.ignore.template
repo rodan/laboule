@@ -1,0 +1,14 @@
+
+# enter here all the IPs that you never want to ban
+# you can either use unique IPs or subnets in CIDR notation
+
+# these IPs will end up in the beginning of the jail chain with a RETURN rule
+# run 'shorewall restart' to apply changes
+
+# localhost
+127.0.0.1
+
+# never ban the toaster
+#10.10.10.0/24
+
+

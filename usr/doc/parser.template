@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# logtail is part of the logsentry package
+
+laboule="/local/adm/laboule/bin/laboule"
+l_socket="/var/lib/laboule/msg"
+
+logtail /var/log/login_failure | grep 'login fail' | awk '{ print $1 }' | while read IP; do 
+	echo "$IP wl count" > ${l_socket}
+done
+
+

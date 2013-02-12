@@ -1,0 +1,62 @@
+
+# iptables chain name that will be used for filtering
+chain='tarpit'
+
+# iptables chain that will be hooked onto by laboule.
+# it's easiest to leave as "PREROUTING"
+# otherwise you could define the dnat interface/destination ip where 
+# tarpitting will take place like:
+# 
+# iptables --table nat -N dnat_net
+# iptables --table nat -I PREROUTING -i eth0 ${other_foo} -j dnat_net
+# and then use
+#calling_chain='dnat_net'
+calling_chain='PREROUTING'
+
+# iptables locations
+iptables='/sbin/iptables'
+ip6tables='/sbin/ip6tables'
+
+# 1 - only ban/unban activity
+# 2 - info
+# 3 - debug
+log_level=3
+
+# Profiles
+# you must define a profile for each service you wish to enforce a ban policy on.
+# the 'count' or 'ban' command that is sent to laboule via the socket will contain
+# the profile name, for example:
+
+# echo "10.34.56.78 wl count" > /var/lib/laboule/msg
+#   '10.34.56.78' is the IP that will be counted
+#   'wl' is the profile
+#   'count' is the command itself
+
+
+# for each profile you have to define
+
+# for how much time (in minutes) to keep track of user activity
+# default 60
+# $PROFILE_deny_buffer_period
+
+# for how much time (in seconds) to keep an IP in a banned state
+# default 3600
+# $PROFILE_ban_period
+
+# after how many policy violations to ban an IP
+# default 5
+# $PROFILE_ban_excuses
+
+# web login example profile
+
+# ban for 10 day increments, watch for 10 days
+mx_deny_buffer_period=14400
+mx_ban_period=86400
+mx_ban_excuses=2
+mx_port_orig=25
+mx_port_new=26
+#mx_proto=tcp
+#mx_ip_orig='109.169.51.118'
+#mx_ip_new='127.0.0.1'
+
+

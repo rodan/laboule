@@ -1,0 +1,22 @@
+#!/bin/bash
+
+l_socket="/var/lib/laboule/msg"
+
+# this exclusion list is separate from jail.ignore since grep can't handle CIDR addresses
+exclude="src=(127.0.0.1|10.10.10.10).*src="
+
+rm -f /dev/shm/conntrack
+
+conntrack -L --proto tcp 2>/dev/null | grep -Ev "${exclude}" > /dev/shm/conntrack
+
+awk '{ print $5 }' /dev/shm/conntrack | sed 's|src=||' |  sort -u | while read ip; do 
+        n=`grep ${ip} /dev/shm/conntrack | wc -l`
+        if [[ "${n}" -gt 500 ]]; then
+                echo "${ip} conntrack ban ${n}" > ${l_socket}
+                sleep 5
+                conntrack --delete conntrack --orig-src "${ip}" &>/dev/null
+        fi
+done
+
+rm -f /dev/shm/conntrack
+

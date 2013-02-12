@@ -1,0 +1,4 @@
+#!/bin/sh
+
+exec multilog t s2000000 /var/log/laboule/
+

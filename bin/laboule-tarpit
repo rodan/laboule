@@ -1,0 +1,403 @@
+#!/bin/bash
+
+# iptables/ip6tables port redirector
+# 
+# Author:  Petre Rodan <petre.rodan@simplex.ro>
+# License: BSD
+# 
+# a banned IP will be redirected to a different port for a multiple 
+# of $SRV_ban_period seconds if it has performed more than
+# $SRV_ban_excuses attempts in the last $SRV_deny_buffer_period minutes
+# 
+# on the redirected port you can place a tarpit or a honeypot of the original service
+
+
+conf='/etc/laboule'
+source ${conf}/laboule-tarpit.conf
+
+socket='/var/lib/laboule/tarpit-msg'
+tmp_dir='/dev/shm/laboule-tarpit'
+
+# blacklists
+bl_log='/var/lib/laboule/blacklist-tarpit.log'
+bl_live='/var/lib/laboule/blacklist-tarpit.live'
+bl_tmp="${tmp_dir}/blacklist-tarpit.tmp"
+
+log_level=${log_level:-1}
+
+chain=${chain:-tarpit}
+calling_chain=${calling_chain:-PREROUTING}
+
+iptables=${iptables:-/sbin/iptables}
+ip6tables=${ip6tables:-/sbin/ip6tables}
+
+GOOD=$'\e[32;01m'
+WARN=$'\e[33;01m'
+BAD=$'\e[31;01m'
+HILITE=$'\e[36;01m'
+NORMAL=$'\e[0m'
+
+laboule_init() {
+
+	${iptables} --table nat -N ${chain} || exit 1
+	${iptables} --table nat -I ${calling_chain} -j ${chain}
+
+	[ ! -e "${conf}/${chain}.ignore" ] && touch "${conf}/${chain}.ignore"
+	[ ! -e "${bl_live}" ] && touch "${bl_live}"
+
+	grep -vE '(#)|(^$)' ${conf}/${chain}.ignore | grep -v ':' | while read ip; do
+		${iptables} --table nat -A ${chain} -s ${ip} -j RETURN
+	done
+
+	awk '{ print $2 " " $3 " " $4 " " $5 " " $6 " " $7 }' ${bl_live} | grep -v ':' | while read ip proto ip_orig port_orig ip_new port_new; do
+        if [ "${ip_orig}" == 'all' -a "${ip_new}" == 'all' ]; then
+		    ${iptables} --table nat -A ${chain} -s ${ip} ${dest} -m ${proto} -p ${proto} --dport ${port_orig} -j REDIRECT --to-port ${port_new}
+        fi
+	done
+}
+
+
+laboule_init6() {
+
+	${ip6tables} --table mangle -N ${chain} || exit 1
+	${ip6tables} --table mangle -I ${calling_chain} -j ${chain}
+
+	[ ! -e "${conf}/${chain}.ignore" ] && touch "${conf}/${chain}.ignore"
+	[ ! -e "${bl_live}" ] && touch "${bl_live}"
+
+	grep -vE '(#)|(^$)' ${conf}/${chain}.ignore | grep ':' | while read ip; do
+		${ip6tables} --table mangle -A ${chain} -s ${ip} -j RETURN
+	done
+
+	awk '{ print $2 " " $3 " " $4 " " $5 " " $6 " " $7 }' ${bl_live} | grep ':' | while read ip proto ip_orig port_orig ip_new port_new; do
+        ${ip6tables} --table mangle -A ${chain} -p ${proto} -s ${ip} --dport ${port_orig} -j TPROXY --on-port ${port_new}
+	done
+}
+
+laboule_clear() {
+
+	${iptables} --table nat -D ${calling_chain} -j ${chain}
+	${iptables} --table nat -F ${chain}
+	${iptables} --table nat -X ${chain}
+}
+
+laboule_clear6() {
+
+	${ip6tables} --table mangle -D ${calling_chain} -j ${chain}
+	${ip6tables} --table mangle -F ${chain}
+	${ip6tables} --table mangle -X ${chain}
+}
+
+
+laboule_check() {
+
+	now="$(date +%s)"
+
+	[ ! -d /dev/shm/laboule-tarpit ] && mkdir /dev/shm/laboule-tarpit
+
+	# unban if time has expired
+	cat ${bl_live} > ${bl_tmp}
+	cat ${bl_tmp} | while read freeze ip proto ip_orig port_orig ip_new port_new; do
+
+		if [[ ${now} -gt ${freeze} ]]; then
+			sed -i "s|^${freeze} ${ip} .*||;/^$/d" ${bl_live}
+			if [ "${ip}" != "${ip/:/}" ]; then
+                ${ip6tables} --table mangle -D ${chain} -p ${proto} -s ${ip} --dport ${port_orig} -j TPROXY --on-port ${port_new}
+				echo "${ip} (ipv6)  has been allowed"
+			else
+                if [ "${ip_orig}" == 'all' -a "${ip_new}" == 'all' ]; then
+                    ${iptables} --table nat -D ${chain} -s ${ip} ${dest} -m ${proto} -p ${proto} --dport ${port_orig} -j REDIRECT --to-port ${port_new}
+                fi
+				echo "${ip} (ipv4)  has been allowed"
+			fi
+		fi
+	done
+}
+
+laboule_server_check() {
+
+	while true; do
+		sleep 60
+		${myself} --periodic
+	done
+
+}
+
+laboule_ban() {
+
+	ip="${1}"
+	srv="${2}"
+
+    source ${conf}/laboule-tarpit.conf
+
+	eval ban_period=$\{${srv}_ban_period\}
+	ban_period=${ban_period:-3600}
+
+    #proto ip_orig port_orig ip_new port_new
+   	eval proto=$\{${srv}_proto\}
+	proto=${proto:-tcp}
+
+   	eval ip_orig=$\{${srv}_ip_orig\}
+	ip_orig=${ip_orig:-all}
+
+   	eval port_orig=$\{${srv}_port_orig\}
+
+   	eval ip_new=$\{${srv}_ip_new\}
+	ip_new=${ip_new:-all}
+
+   	eval port_new=$\{${srv}_port_new\}
+
+	now="$(date +%s)"
+
+	[ ! -e ${bl_log} ] && touch ${bl_log}
+
+	if grep -q " ${ip} ${proto} ${ip_orig} ${port_orig} ${ip_new} ${port_new}$" ${bl_live}; then
+		echo "${ip} is already blacklisted"
+	else
+		freeze_n=$(( $(grep " ${ip} " ${bl_log} | wc -l) + 1 ))
+		freeze_until=$(( ${now} + ${freeze_n} * ${ban_period} ))
+		echo "${now} ${freeze_until} ${ip} ${srv} ${freeze_n}" >> ${bl_log}
+		echo "${freeze_until} ${ip} ${proto} ${ip_orig} ${port_orig} ${ip_new} ${port_new}" >> ${bl_live}
+		if [ "${ip}" != "${ip/:/}" ]; then
+            ${ip6tables} --table mangle -A ${chain} -p ${proto} -s ${ip} --dport ${port_orig} -j TPROXY --on-port ${port_new}
+			echo "${ip} (ipv6)  has been added to the tarpit"
+		else
+            if [ "${ip_orig}" == 'all' -a "${ip_new}" == 'all' ]; then
+                ${iptables} --table nat -A ${chain} -s ${ip} ${dest} -m ${proto} -p ${proto} --dport ${port_orig} -j REDIRECT --to-port ${port_new}
+            fi
+			echo "${ip} (ipv4)  has been added to the tarpit"
+		fi
+	fi
+}
+
+laboule_unban() {
+	ip="$1"
+	sed -i "s|^.* ${ip}$||;/^$/d" ${bl_live}
+	if [ "${ip}" != "${ip/:/}" ]; then
+		${ip6tables} -D ${chain} -s ${ip} -j DROP &&
+			echo " ${WARN}*${NORMAL} ${ip} (ipv6)  has been manually allowed"
+	else
+		${iptables} -D ${chain} -s ${ip} -j DROP &&
+			echo " ${WARN}*${NORMAL} ${ip} (ipv4)  has been manually allowed"
+	fi
+}
+
+translate_utime() {
+	date -d @"${1}" +"%Y-%m-%d %H:%M:%S"
+}
+
+laboule_info() {
+	ip="$1"
+
+	if [ ! -z "${ip}" ]; then
+		if [ "${ip}" != "${ip/:/}" ]; then
+			if ip6tables-save | grep -vi 'RETURN' | grep -q "${chain}.*-s ${ip}/128"; then
+				echo "${BAD} ip present in ip6tables${NORMAL}"
+			else
+				echo "${GOOD} ip not present in ip6tables${NORMAL}"
+			fi 
+		else
+			if iptables-save | grep -vi 'RETURN' | grep -q "${chain}.*-s ${ip}/32"; then
+				echo "${BAD} ip present in iptables${NORMAL}"
+			else
+				echo "${GOOD} ip not present in iptables${NORMAL}"
+			fi 
+		fi
+		if grep -q " ${ip}$" "${bl_live}"; then
+			echo -e "${WARN} ip in live blacklist${NORMAL}"
+			line=`grep " ${ip}$" "${bl_live}"`
+			end=`echo "${line}" | awk '{ print $1 }'`
+			diff=$(( (${end} - `date +%s`)/60 ))
+			echo " \"${line}\""
+			echo " ${GOOD}*${NORMAL} unban on    `translate_utime ${end}`, in ${diff} minutes "
+		fi
+		if grep -q " ${ip} " "${bl_log}"; then
+			echo "${WARN} archived info present${NORMAL}"
+			grep " ${ip} " "${bl_log}" | while read line; do
+				start=`echo "${line}" | awk '{ print $1 }'`
+				end=`echo "${line}" | awk '{ print $2 }'`
+				echo " \"${line}\""
+				echo " ${BAD}*${NORMAL}   banned on `translate_utime ${start}`"
+				echo " ${GOOD}*${NORMAL} unbanned on `translate_utime ${end}`"
+			done
+		fi
+	else
+		list=`iptables-save | grep -v 'RETURN' | grep "${chain} -s" | sort -n | sed "s|.*-s \(.*\)/32.*|\1|"`
+		list6=`ip6tables-save | grep -v 'RETURN' | grep "${chain} -s" | sort -n | sed "s|-A ${chain} -s ||;s|/128 -j DROP||"`
+		num=`( echo "${list}" ; echo ${list6} ) | grep -v '^$' | wc -l`
+		echo "${list}" | column --fillrows
+		echo "${list6}" | column --fillrows
+		echo "${WARN} ${num} ips jailed${NORMAL}"
+	fi
+}
+
+laboule_server() {
+
+	rm -f ${socket}
+	mkfifo ${socket}
+
+	laboule_server_check &
+
+	exec 3<>${socket}
+
+	while true; do
+		cat <&3 | while read LINE; do
+			laboule_parse "${LINE}"
+		done
+	done
+
+}
+
+laboule_start() {
+	[ -e /service/laboule-tarpit ] && {
+		svcinit laboule-tarpit start
+	}
+}
+
+laboule_stop() {
+	[ -e /service/laboule-tarpit ] && {
+		cd /service
+		svc -d laboule-tarpit
+		touch /service/laboule-tarpit/down
+	}
+	killall -9 laboule-tarpit 2>/dev/null
+}
+
+laboule_restart() {
+	# supervise will start the daemon process
+	killall -9 laboule-tarpit 2>/dev/null
+}
+
+laboule_parse() {
+
+	line="${1}"
+	ip=$(echo "${line}" | awk '{ print $1 }')
+	srv=$(echo "${line}" | awk '{ print $2 }')
+	cmd=$(echo "${line}" | awk '{ print $3 }')
+	extra=$(echo "${line}" | awk '{ print $4" "$5" "$6 }')
+
+	[ "${log_level}" -gt 1 ] && {
+		echo "ip=${ip}; srv=${srv}; cmd=${cmd} extra=${extra}"
+	}
+
+	echo "${cmd}" | grep -q '^ban$' && {
+		laboule_ban "${ip}" "${srv}"
+	}
+
+	echo "${cmd}" | grep -q '^count$' && {
+		laboule_count "${ip}" "${srv}"
+	}
+
+}
+
+laboule_count() {
+
+	ip="${1}"
+	srv="${2}"
+	dst="${tmp_dir}/c_${srv}_$(date +%Y%m%d%H%M)"
+
+    # in case something changed in the conf
+    source ${conf}/laboule-tarpit.conf
+
+	eval ban_excuses=$\{${srv}_ban_excuses\}
+	ban_excuses=${ban_excuses:-5}
+
+	eval deny_buffer_period=$\{${srv}_deny_buffer_period\}
+	deny_buffer_period=${deny_buffer_period:-60}
+
+	[ ! -d ${tmp_dir} ] && {
+		rm -rf /dev/shm/laboule
+		mkdir ${tmp_dir}
+	}
+   
+	echo "${ip}" >> ${dst}
+	find ${tmp_dir} -type f -name "c_${srv}_*" -mmin +${deny_buffer_period} -delete
+
+	count=$(grep "^${ip}$" ${tmp_dir}/c_${srv}_* | wc -l )
+	if [ "${count}" -ge "${ban_excuses}" ]; then
+		laboule_ban "${ip}" "${srv}"
+	fi
+}
+
+laboule_usage() {
+	cat <<- EOF
+		Usage: $0 [--init] [--init6] [--info [IP]] [--unban IP] [--help]
+	              [start] [stop] [restart] [server]
+
+		Options include:
+		  init    initializes the jail chain and populates it
+		  init6   initializes the jail chain for ipv6 and populates it
+		  clear   removes the jail chain from the firewall
+		  clear6  removes the jail chain from the ipv6 firewall
+		  unban   temporarily unban IP
+		  periodic unban expired violations
+		  info    get info, can accept an optional IP as parameter
+		  start   signal daemontools to start the daemon
+		  stop    stop deamon
+		  restart restart daemon
+		  server  start a foreground process daemon - to be used by daemontools
+		  help    this very helpful message
+	EOF
+}
+
+[[ $# = 0 ]] && {
+	laboule_usage
+	exit 1
+}
+
+trap "rm -f ${bl_tmp}; exit 0" 0 1 2 3 15
+rm -f "${bl_tmp}"
+
+myself="$0"
+
+while (( "$#" )); do
+
+	if [ "$1" = "--init" ]; then
+		laboule_init
+		shift;
+	elif [ "$1" = "--init6" ]; then
+		laboule_init6
+		shift;
+	elif [ "$1" = "--clear" ]; then
+		laboule_clear
+		shift;
+	elif [ "$1" = "--periodic" ]; then
+		laboule_check
+		shift;
+	elif [ "$1" = "--clear6" ]; then
+		laboule_clear6
+		shift;
+	elif [ "$1" = "--ban" ]; then
+		laboule_ban
+		shift;
+	elif [ "$1" = "--unban" ]; then
+		laboule_unban "${2}"
+		shift;
+		shift;
+	elif [ "$1" = "--start" ]; then
+		laboule_start
+		shift;
+	elif [ "$1" = "--stop" ]; then
+		laboule_stop
+		shift;
+	elif [ "$1" = "--restart" ]; then
+		laboule_restart
+		shift;
+	elif [ "$1" = "--server" ]; then
+		laboule_server
+		shift;
+	elif [ "$1" = "--info" ]; then
+		laboule_info "${2}"
+		shift;
+		shift;
+	elif [ "$1" = "--help" ]; then
+		laboule_usage
+		shift;
+	else
+		echo "warning: '$1' is an unknown option"
+		shift;
+	fi
+done
+
+
+
