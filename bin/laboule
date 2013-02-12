@@ -296,24 +296,24 @@ laboule_count() {
 }
 
 laboule_usage() {
-    cat <<- EOF
-        Usage: $0 [--init] [--init6] [--info [IP]] [--unban IP] [--help]
-                  [start] [stop] [restart] [server]
+cat << EOF
+    Usage: $0 [--init] [--init6] [--info [IP]] [--unban IP] [--help]
+              [start] [stop] [restart] [server]
 
-        Options include:
-          init    initializes the jail chain and populates it
-          init6   initializes the jail chain for ipv6 and populates it
-          clear   removes the jail chain from the firewall
-          clear6  removes the jail chain from the ipv6 firewall
-          unban   temporarily unban IP
-          periodic unban expired violations
-          info    get info, can accept an optional IP as parameter
-          start   signal daemontools to start the daemon
-          stop    stop deamon
-          restart restart daemon
-          server  start a foreground process daemon - to be used by daemontools
-          help    this very helpful message
-    EOF
+    Options include:
+      init    initializes the jail chain and populates it
+      init6   initializes the jail chain for ipv6 and populates it
+      clear   removes the jail chain from the firewall
+      clear6  removes the jail chain from the ipv6 firewall
+      unban   temporarily unban IP
+      periodic unban expired violations
+      info    get info, can accept an optional IP as parameter
+      start   signal daemontools to start the daemon
+      stop    stop deamon
+      restart restart daemon
+      server  start a foreground process daemon - to be used by daemontools
+      help    this very helpful message
+EOF
 }
 
 [[ $# = 0 ]] && {
