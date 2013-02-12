@@ -1,0 +1,44 @@
+
+ * description
+
+ laboule - iptables jail chain manager
+  this daemonized bash script performs the following tasks:
+
+  - binds itself to a unix socket and listens for 'ban' and 'count' commands
+  - log parsers decide if an IP has performed an illegal operation 
+  and send a row to that socket:
+  IP PROFILE COMMAND WHATEVER_EXTRA_INFO
+
+  IP        can either be ipv4 or ipv6
+  PROFILE   is a user-defined string (see /etc/laboule/laboule.conf)
+  COMMAND   is one of 'count' or 'ban'
+  WHATEVER_EXTRA_INFO will be logged into /var/log/laboule/
+
+  for the count command:
+  if an IP is counted more than $PROFILE_ban_excuses times in an 
+  interval of $PROFILE_ban_period seconds it will be banned for 
+  N * $PROFILE_deny_buffer_period minutes, where N is how many times
+  this ban has happened in the past for this IP
+
+  for the ban command:
+  the IP is outright banned for 
+  N * $PROFILE_deny_buffer_period minutes, where N is how many times
+  this ban has happened in the past for this IP
+
+  in the case of laboule-tarpit the use scenario is equivalent, however 
+  the IP does not receive a DROP rule, but a REDIRECT to another port 
+  where a tarpit/honeypot is listening. 
+  ipv6 has not been thoroughly tested with laboule-tarpit.
+
+  * dependencies
+   - iptables (with optional ipv6 support)
+   - a tmpfs in /dev/shm for quick activity searches
+   - daemontools (used by the sample init scripts and for logging)
+   - logsentry (used by some of the sample log parsers)
+   - conntrack-tools (used by one of the sample log parsers)
+
+
+  Author:          Petre Rodan <petre.rodan@simplex.ro>
+  Available from:  https://github.com/rodan/laboule
+  License:         BSD
+
