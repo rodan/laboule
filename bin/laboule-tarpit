@@ -9,7 +9,8 @@
 # of $SRV_ban_period seconds if it has performed more than
 # $SRV_ban_excuses attempts in the last $SRV_deny_buffer_period minutes
 # 
-# on the redirected port you can place a tarpit or a honeypot of the original service
+# on the redirected port you can place a tarpit or a honeypot 
+# that would emulate the original service
 
 
 conf='/etc/laboule'
