@@ -21,6 +21,7 @@ src_install() {
 	keepdir /local/adm/laboule
 	keepdir /var/lib/laboule
 	keepdir /var/log/laboule
+	keepdir /var/log/laboule-tarpit
 
 	cp -R "${S}/" "${D}/local/adm/" || die "Install failed"
 
