@@ -1,6 +1,6 @@
 
  * description
- laboule - iptables jail chain manager
+  laboule - the iptables chain manager for impolite IPs
   this daemonized bash script performs the following tasks:
 
   - binds itself to a unix socket and listens for 'ban' and 'count' commands
@@ -32,23 +32,22 @@
   syncronous syslog parsing is also available, see laboule_syslog_parser.sh
   for an example
 
-  * dependencies
+ * dependencies
    - iptables (with optional ipv6 support)
    - a tmpfs in /dev/shm for quick activity searches
    - daemontools (used by the sample init scripts and for logging)
    - logsentry (used by some of the sample log parsers)
    - conntrack-tools (used by one of the sample log parsers)
-   - any firewall software can be used, provided that two glues are provided:
+   - any firewall software can be used, provided that some glue logic is provided:
       after firewall (re)start the following scripts are run:
         /local/adm/laboule/bin/laboule --init
         /local/adm/laboule/bin/laboule-tarpit --init
         /local/adm/laboule/bin/laboule --init6
         /local/adm/laboule/bin/laboule-tarpit --init6
-        (select only those that apply in your use case)
+        (run only those that apply in your use case)
         (these end up in /etc/shorewall*/start if shorewall is used)
       and make sure you locate the proper parent chain (calling_chain) into which
-      laboule will inject it's logic
-        (example laboule*.confs work with shorewall)
+       laboule will inject it's logic (example laboule*.confs work with shorewall)
 
 
   Author:          Petre Rodan <petre.rodan@simplex.ro>
