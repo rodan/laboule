@@ -42,7 +42,7 @@
         /local/adm/laboule/bin/laboule-tarpit --init
         /local/adm/laboule/bin/laboule --init6
         /local/adm/laboule/bin/laboule-tarpit --init6
-        (select only the ones that apply in your use scenario)
+        (select only those that apply in your use case)
         (these end up in /etc/shorewall*/start if shorewall is used)
       and make sure you know what calling chain to use in shorewall*.conf
         (example configs work with shorewall)
