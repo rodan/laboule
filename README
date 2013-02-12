@@ -46,8 +46,9 @@
         /local/adm/laboule/bin/laboule-tarpit --init6
         (select only those that apply in your use case)
         (these end up in /etc/shorewall*/start if shorewall is used)
-      and make sure you know what calling chain to use in shorewall*.conf
-        (example configs work with shorewall)
+      and make sure you locate the proper parent chain (calling_chain) into which
+      laboule will inject it's logic
+        (example laboule*.confs work with shorewall)
 
 
   Author:          Petre Rodan <petre.rodan@simplex.ro>

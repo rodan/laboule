@@ -2,7 +2,7 @@
 # iptables chain name that will be used for filtering
 chain='jail'
 
-# iptables chain that will be used by laboule.
+# parent iptables chain from which packets will be sent to our chain for filtering
 # this can either be 'INPUT' if there is not much of a firewall installed or 
 # something like 'net2fw' in case of shorewall.
 calling_chain='net2fw'
