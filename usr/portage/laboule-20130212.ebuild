@@ -45,6 +45,7 @@ src_install() {
 	newins usr/doc/tarpit.ignore.template tarpit.ignore
 	newins usr/doc/laboule-tarpit.conf.template laboule-tarpit.conf
 
-	dodir /local/bin
-	dosym /local/adm/laboule/bin/laboule /local/bin/laboule
+	dodir /opt/bin
+	dosym /local/adm/laboule/bin/laboule /opt/bin/laboule
+	dosym /local/adm/laboule/bin/laboule-tarpit /opt/bin/laboule-tarpit
 }
