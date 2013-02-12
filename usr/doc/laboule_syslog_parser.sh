@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# in order to apply changes made to this file you need to restart syslog*
+
 # strings that define failed ssh login attempts
 attempt='(not allowed because none)|(Failed password for)'
 
@@ -17,6 +19,7 @@ done
 
 # sample config for syslog-ng:
 
+## make sure flush_timeout is not set too high or the firewall changes might come later than anticipated
 ## send remote login attempts to laboule
 #filter f_auth { facility(auth, authpriv); };
 #destination laboule_syslog_parser {
