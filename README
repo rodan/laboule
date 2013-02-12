@@ -36,6 +36,16 @@
    - daemontools (used by the sample init scripts and for logging)
    - logsentry (used by some of the sample log parsers)
    - conntrack-tools (used by one of the sample log parsers)
+   - any firewall software can be used, provided that two glues are provided:
+      after firewall (re)start the following scripts are run:
+        /local/adm/laboule/bin/laboule --init
+        /local/adm/laboule/bin/laboule-tarpit --init
+        /local/adm/laboule/bin/laboule --init6
+        /local/adm/laboule/bin/laboule-tarpit --init6
+        (select only the ones that apply in your use scenario)
+        (these end up in /etc/shorewall*/start if shorewall is used)
+      and make sure you know what calling chain to use in shorewall*.conf
+        (example configs work with shorewall)
 
 
   Author:          Petre Rodan <petre.rodan@simplex.ro>
