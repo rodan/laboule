@@ -325,7 +325,7 @@ laboule_count() {
 laboule_usage() {
 cat << EOF
     Usage: $0 [--init] [--init6] [--info [IP]] [--unban IP] [--help]
-              [start] [stop] [restart] [server]
+              [--start] [--stop] [--restart] [--server]
 
     Options include:
       init    initializes the jail chain and populates it
