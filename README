@@ -35,9 +35,10 @@
  * dependencies
    - iptables (with optional ipv6 support)
    - a tmpfs in /dev/shm for quick activity searches
-   - daemontools (used by the sample init scripts and for logging)
-   - logsentry (used by some of the sample log parsers)
-   - conntrack-tools (used by one of the sample log parsers)
+   - daemontools (used by the sample init scripts and for logging) - optional
+   - daemontools-scripts (used by laboule --start) - optional
+   - logsentry (used by some of the sample log parsers) - optional
+   - conntrack-tools (used by one of the sample log parsers) - optional
    - any firewall software can be used, provided that some glue logic is provided:
       after firewall (re)start the following scripts are run:
         /local/adm/laboule/bin/laboule --init

@@ -236,7 +236,7 @@ laboule_server() {
 
     rm -f "${socket}"
     mkfifo "${socket}"
-    chmod 700 "${socket}"
+    chmod 600 "${socket}"
     chown laboule:laboule "${socket}"
 
     laboule_server_check &

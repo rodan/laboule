@@ -4,7 +4,7 @@
 
 inherit eutils user
 
-DESCRIPTION="tool to easily ban/tarpit unpolite IPs via iptables/ip6tables"
+DESCRIPTION="the iptables chain manager for impolite IPs"
 HOMEPAGE="http://github.com/rodan/laboule"
 SRC_URI="http://mirrors.bu.avira.com/gentoo/distfiles/${P}.tar.bz2"
 S="${WORKDIR}/${PN}"
