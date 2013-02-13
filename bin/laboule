@@ -84,6 +84,15 @@ laboule_clear6() {
     ${ip6tables} -X ${chain}
 }
 
+is_ipv4() {
+    echo "${1}" | grep -q '^[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}$' && return 0
+    return 1
+}
+
+is_ipv6() {
+    echo "${1}" | grep -q '^\([0-9a-fA-F:]\{2,5\}\)\{2,8\}$' && return 0
+    return 1
+}
 
 laboule_check() {
 
@@ -123,27 +132,27 @@ laboule_ban() {
     ip="${1}"
     srv="${2}"
 
-    eval ban_period=$\{${srv}_ban_period\}
-    ban_period=${ban_period:-3600}
-
-    now="$(date +%s)"
-
-    [ ! -e ${bl_log} ] && touch ${bl_log}
-
     if grep -q " ${ip}$" ${bl_live}; then
         echo "${ip} is already blacklisted"
     else
+        if is_ipv4 "${ip}"; then
+            ${iptables} -A ${chain} -s ${ip} -j DROP
+            echo "${ip} (ipv4)  has been blacklisted"
+        elif is_ipv6 "${ip}"; then
+            ${ip6tables} -A ${chain} -s ${ip} -j DROP
+            echo "${ip} (ipv6)  has been blacklisted"
+        else
+            echo "error: ${ip} does not look like an ip"
+            return 1
+        fi
+        eval ban_period=$\{${srv}_ban_period\}
+        ban_period=${ban_period:-3600}
+        now="$(date +%s)"
+        [ ! -e ${bl_log} ] && touch ${bl_log}
         freeze_n=$(( $(grep " ${ip} " ${bl_log} | wc -l) + 1 ))
         freeze_until=$(( ${now} + ${freeze_n} * ${ban_period} ))
         echo "${now} ${freeze_until} ${ip} ${srv} ${freeze_n}" >> ${bl_log}
         echo "${freeze_until} ${ip}" >> ${bl_live}
-        if [ "${ip}" != "${ip/:/}" ]; then
-            ${ip6tables} -A ${chain} -s ${ip} -j DROP
-            echo "${ip} (ipv6)  has been blacklisted"
-        else
-            ${iptables} -A ${chain} -s ${ip} -j DROP
-            echo "${ip} (ipv4)  has been blacklisted"
-        fi
     fi
 }
 

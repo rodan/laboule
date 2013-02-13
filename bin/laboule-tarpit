@@ -89,6 +89,15 @@ laboule_clear6() {
     ${ip6tables} --table mangle -X ${chain}
 }
 
+is_ipv4() {
+    echo "${1}" | grep -q '^[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}$' && return 0
+    return 1
+}
+
+is_ipv6() {
+    echo "${1}" | grep -q '^\([0-9a-fA-F:]\{2,5\}\)\{2,8\}$' && return 0
+    return 1
+}
 
 laboule_check() {
 
@@ -155,19 +164,23 @@ laboule_ban() {
     if grep -q " ${ip} ${proto} ${ip_orig} ${port_orig} ${ip_new} ${port_new}$" ${bl_live}; then
         echo "${ip} is already blacklisted"
     else
+        if is_ipv4 "${ip}"; then
+            if [ "${ip_orig}" == 'all' -a "${ip_new}" == 'all' ]; then
+                ${iptables} --table nat -A ${chain} -s ${ip} ${dest} -m ${proto} -p ${proto} --dport ${port_orig} -j REDIRECT --to-port ${port_new}
+                echo "${ip} (ipv4)  has been added to the tarpit"
+            fi
+        elif is_ipv6 "${ip}"; then
+            ${ip6tables} --table mangle -A ${chain} -p ${proto} -s ${ip} --dport ${port_orig} -j TPROXY --on-port ${port_new}
+            echo "${ip} (ipv6)  has been added to the tarpit"
+        else
+            echo "error: ${ip} does not look like an ip"
+            return 1
+        fi
+
         freeze_n=$(( $(grep " ${ip} " ${bl_log} | wc -l) + 1 ))
         freeze_until=$(( ${now} + ${freeze_n} * ${ban_period} ))
         echo "${now} ${freeze_until} ${ip} ${srv} ${freeze_n}" >> ${bl_log}
         echo "${freeze_until} ${ip} ${proto} ${ip_orig} ${port_orig} ${ip_new} ${port_new}" >> ${bl_live}
-        if [ "${ip}" != "${ip/:/}" ]; then
-            ${ip6tables} --table mangle -A ${chain} -p ${proto} -s ${ip} --dport ${port_orig} -j TPROXY --on-port ${port_new}
-            echo "${ip} (ipv6)  has been added to the tarpit"
-        else
-            if [ "${ip_orig}" == 'all' -a "${ip_new}" == 'all' ]; then
-                ${iptables} --table nat -A ${chain} -s ${ip} ${dest} -m ${proto} -p ${proto} --dport ${port_orig} -j REDIRECT --to-port ${port_new}
-            fi
-            echo "${ip} (ipv4)  has been added to the tarpit"
-        fi
     fi
 }
 
