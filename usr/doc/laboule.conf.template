@@ -5,7 +5,7 @@ chain='jail'
 # parent iptables chain from which packets will be sent to our chain for filtering
 # this can either be 'INPUT' if there is not much of a firewall installed or 
 # something like 'net2fw' in case of shorewall.
-calling_chain='net2fw'
+calling_chain='net-fw'
 
 # iptables locations
 iptables='/sbin/iptables'
@@ -47,4 +47,19 @@ wl_deny_buffer_period=240
 wl_ban_period=3600
 wl_ban_excuses=10
 
+conntrack_deny_buffer_period=240
+conntrack_ban_period=3600
+conntrack_ban_excuses=1
+
+firewall_deny_buffer_period=240
+firewall_ban_period=3600
+firewall_ban_excuses=8
+
+mx_deny_buffer_period=240
+mx_ban_period=3600
+mx_ban_excuses=8
+
+auth_deny_buffer_period=240
+auth_ban_period=3600
+auth_ban_excuses=8
 
