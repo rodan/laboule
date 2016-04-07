@@ -29,16 +29,21 @@ calling_chain=${calling_chain:-net2fw}
 iptables=${iptables:-/sbin/iptables}
 ip6tables=${ip6tables:-/sbin/ip6tables}
 
-GOOD=$'\e[32;01m'
-WARN=$'\e[33;01m'
-BAD=$'\e[31;01m'
-HILITE=$'\e[36;01m'
-NORMAL=$'\e[0m'
+if [ -t 1 ]; then
+    GOOD=$'\e[32;01m'
+    WARN=$'\e[33;01m'
+    BAD=$'\e[31;01m'
+    HILITE=$'\e[36;01m'
+    NORMAL=$'\e[0m'
+fi
 
 laboule_init() {
 
     ${iptables} -N ${chain} || exit 1
-    ${iptables} -I ${calling_chain} -j ${chain}
+
+    for i in ${calling_chain}; do
+        ${iptables} -I ${i} -j ${chain}
+    done
 
     [ ! -e "${conf}/${chain}.ignore" ] && touch "${conf}/${chain}.ignore"
     [ ! -e "${bl_live}" ] && touch "${bl_live}"
@@ -210,10 +215,27 @@ laboule_info() {
     else
         list=`iptables-save | grep "${chain}.*DROP" | sort -n | sed "s|-A ${chain} -s ||;s|/32 -j DROP||"`
         list6=`ip6tables-save | grep "${chain}.*DROP" | sort -n | sed "s|-A ${chain} -s ||;s|/128 -j DROP||"`
-        num=`( echo "${list}" ; echo ${list6} ) | grep -v '^$' | wc -l`
-        echo "${list}" | column --fillrows
-        echo "${list6}" | column --fillrows
-        echo "${WARN} ${num} ips jailed${NORMAL}"
+        if [ -t 1 ]; then
+            num=`( echo "${list}" ; echo ${list6} ) | grep -v '^$' | wc -l`
+            if [ "${geo}" = "true" ]; then
+                for ip in ${list}; do 
+                    echo "${ip}" | grep -qEo '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' && echo -n ${ip}; loc=`geoiplookup -f /usr/share/GeoIP/GeoIP.dat "${ip}" | sed 's|.*:\s\([A-Z][A-Z]\),.*|\1|'`; echo " (${loc})"
+                done
+            else
+                echo "${list}"
+            fi
+            echo "${list6}"
+            echo "${WARN} ${num} ips jailed${NORMAL}"
+        else
+             if [ "${geo}" = "true" ]; then
+                for ip in ${list}; do 
+                    echo "${ip}" | grep -qEo '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' && echo -n ${ip}; loc=`geoiplookup -f /usr/share/GeoIP/GeoIP.dat "${ip}" | sed 's|.*:\s\([A-Z][A-Z]\),.*|\1|'`; echo " (${loc})"
+                done
+            else
+                echo "${list}"
+            fi
+            echo "${list6}"
+        fi
     fi
 }
 
@@ -276,6 +298,35 @@ laboule_parse() {
         laboule_count "${ip}" "${srv}"
     }
 
+    echo "${cmd}" | grep -q '^ban_until$' && {
+        # $srv will be the unixtime in this case
+        laboule_ban_until "${ip}" "${srv}"
+    }
+}
+
+laboule_ban_until() {
+
+    ip="${1}"
+    freeze_until="${2}"
+
+    if grep -q " ${ip}$" ${bl_live}; then
+        echo "${ip} is already blacklisted"
+        if ! grep -q "^${freeze_until} ${ip}$" ${bl_live}; then
+            sed -i "s|.* ${ip}$|${freeze_until} ${ip}|" ${bl_live}
+        fi
+    else
+        if is_ipv4 "${ip}"; then
+            ${iptables} -A ${chain} -s ${ip} -j DROP
+            echo "${ip} (ipv4)  has been blacklisted until ${freeze_until}"
+        elif is_ipv6 "${ip}"; then
+            ${ip6tables} -A ${chain} -s ${ip} -j DROP
+            echo "${ip} (ipv6)  has been blacklisted until ${freeze_until}"
+        else
+            echo "error: ${ip} does not look like an ip"
+            return 1
+        fi
+        echo "${freeze_until} ${ip}" >> ${bl_live}
+    fi
 }
 
 laboule_count() {
@@ -317,6 +368,7 @@ cat << EOF
       unban   temporarily unban IP
       periodic unban expired violations
       info    get info, can accept an optional IP as parameter
+      geo     add geoip to --info
       start   signal daemontools to start the daemon
       stop    stop deamon
       restart restart daemon
@@ -370,6 +422,9 @@ while (( "$#" )); do
         shift;
     elif [ "$1" = "--server" ]; then
         laboule_server
+        shift;
+    elif [ "$1" = "--geo" ]; then
+        geo='true'
         shift;
     elif [ "$1" = "--info" ]; then
         laboule_info "${2}"
