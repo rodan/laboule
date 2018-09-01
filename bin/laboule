@@ -2,7 +2,7 @@
 
 # iptables/ip6tables chain manager software
 # 
-# Author:  Petre Rodan <petre.rodan@simplex.ro>
+# Author:  Petre Rodan <2b4eda@subdimension.ro>
 # License: BSD
 # 
 # a banned IP will be kept in the 'jail' chain a multiple 

@@ -2,7 +2,7 @@
 
 # iptables/ip6tables port redirector
 # 
-# Author:  Petre Rodan <petre.rodan@simplex.ro>
+# Author:  Petre Rodan <2b4eda@subdimension.ro>
 # License: BSD
 # 
 # a banned IP will be redirected to a different port for a multiple 
