@@ -7,7 +7,7 @@ inherit eutils
 
 DESCRIPTION="the iptables chain manager for impolite IPs"
 HOMEPAGE="https://github.com/rodan/laboule"
-SRC_URI="https://github.com/rodan/${PN}/archive/${PV}.tar.gz"
+SRC_URI="https://github.com/rodan/${PN}/archive/${PV}.tar.gz -> ${P}.tar.gz"
 
 LICENSE="BSD"
 SLOT="0"
