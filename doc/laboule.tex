@@ -1,0 +1,110 @@
+\documentclass[12pt,twoside,a4paper,titlepage]{report}
+
+\setlength{\oddsidemargin}{2mm}
+\setlength{\evensidemargin}{2mm}
+\setlength{\textwidth}{154mm}
+\setlength{\textheight}{220mm}
+\setlength{\topmargin}{0mm}
+\setlength{\parskip}{1mm}
+\renewcommand{\floatpagefraction} {0.99}
+\renewcommand{\textfraction} {0.0}
+\renewcommand{\topfraction} {0.99}
+
+\renewcommand{\baselinestretch}{1.1}
+
+\vbadness=10001 % the hell with underfull vboxes
+\hbadness=10001
+
+%\usepackage[romanian]{babel}
+\usepackage[latin2]{inputenc}
+\usepackage{fancyhdr}
+%\usepackage{makeidx}
+\usepackage{amssymb}
+\usepackage{url}
+\usepackage{longtable}
+\usepackage{multicol}
+\usepackage{graphics}
+\usepackage{graphicx} 
+\usepackage{subfigure}
+\usepackage{pslatex}
+\usepackage{multirow}
+\usepackage[colorlinks=true, pdfstartview=FitV, linkcolor=blue, 
+	    citecolor=blue, urlcolor=blue]{hyperref}
+
+\pagestyle{fancy}
+
+\addtolength{\headheight}{\baselineskip}
+
+\renewcommand{\chaptermark}[1]{\markboth{\chaptername \ \thechapter.\ #1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection.\ #1}}
+
+\newcommand{\clearemptydoublepage}{\newpage{\pagestyle{empty}\cleardoublepage}}
+
+\setcounter{secnumdepth}{5}
+
+\begin{document} 
+
+%\newcommand{\helv}{%
+% \fontfamily{phv}\fontseries{b}\fontsize{9}{11}\selectfont}
+
+\fancyhf{}
+
+\fancyhead{} % clear all fields
+\fancyhead[LO]{\rightmark }
+\fancyhead[RE]{\leftmark }
+\fancyhead[LE,RO]{\thepage }
+%\fancyfoot[CO,CE]{\thepage }
+
+\pagenumbering{roman}
+
+%\title{automatic firewall management}
+%\author{author: Petre Rodan}
+%\date{created Nov 19 2015, revised \today}
+%\maketitle
+
+%\tableofcontents
+%\newpage
+
+\section{laboule - principles of operation}
+\pagenumbering{arabic}
+
+the scope is to manage a firewall in an automatic manner based on external events. in case unwanted behaviour is detected and if the magnitude is above a customizable threshold then the daemon will jail that IP for a time period thus not allowing the attacker to flood any of the services present on the server. the denial rule will be automatically removed once that period is over. 
+
+if it happens that the IP is a repeating offender the ban periods will get longer and longer.
+
+the proposed service has two distinct modules: 
+\begin{itemize}
+    \item a daemon (laboule itself) listening on a unix socket for simple commands
+    \item multiple scripts that detect fishy behaviour and send commands to the daemon
+\end{itemize}
+
+\section{the laboule daemon}
+
+it listens on a UNIX socket for commands like
+\begin{verbatim}
+213.233.121.11 authfail count
+\end{verbatim}
+
+each time a \verb!count! command is received the incident will be internally logged and counted, later to be compared to a threshold level. once the threshold is reached that IP will be added to a firewall chain whom all incoming packets are filtered by.
+
+all the time intervals and the event counting is done internally.
+
+\verb!ban! commands jail the IP on the spot.
+
+\section{detection scripts}
+
+these can be written in any language. they either exit without taking any further action or simply pipe commands like "212.130.11.20 COUNT " into laboule's socket.
+
+any server generated output (be it log, other tools, proc files) is parsed and if a detection rule is matched then the IP will be reported to laboule as many times as the behaviour was detected. this is an asyncronous approach and it's the prefered method.
+
+if however a syncronous decision needs to be made then a detection script can be directly tied into a syslog filter or can be made to receive input via a pipe in order to parse possible events on the spot.
+
+examples of such scripts can detect any of: 
+\begin{itemize}
+    \item port scanning attempts
+    \item detection of malware that generate http GETs of a single page of a website
+    \item floods (based on kernel connection tracking tables)
+    \item failed login attempts of any kind
+\end{itemize}
+
+\end{document}

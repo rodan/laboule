@@ -1,12 +1,13 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-# $Header: Exp $
 
-inherit eutils user
+EAPI=7
+
+inherit eutils
 
 DESCRIPTION="the iptables chain manager for impolite IPs"
-HOMEPAGE="http://github.com/rodan/laboule"
-SRC_URI="http://mirrors.bu.avira.com/gentoo/distfiles/${P}.tar.bz2"
+HOMEPAGE="https://github.com/rodan/laboule"
+SRC_URI="https://github.com/rodan/${PN}/archive/${P}.tar.gz"
 S="${WORKDIR}/${PN}"
 
 LICENSE="BSD"
@@ -14,18 +15,20 @@ SLOT="0"
 KEYWORDS="amd64 x86"
 IUSE=""
 
-RDEPEND="net-firewall/iptables"
-DEPEND="${RDEPEND}"
+DEPEND=""
+RDEPEND="
+	acct-user/laboule
+	acct-group/laboule
+	net-firewall/iptables
+"
 RESTRICT="strip mirror"
 
+LABOULE_HOME="/usr/share/laboule"
+
 src_install() {
-	dodir /local/adm
-	keepdir /local/adm/laboule
 	keepdir /var/lib/laboule
 	keepdir /var/log/laboule
 	keepdir /var/log/laboule-tarpit
-
-	cp -R "${S}/" "${D}/local/adm/" || die "Install failed"
 
 	dodir /var/service
 	cp -R "${S}/service/laboule/" "${D}/var/service/"
@@ -38,12 +41,11 @@ src_install() {
 	newins usr/doc/tarpit.ignore.template tarpit.ignore
 	newins usr/doc/laboule-tarpit.conf.template laboule-tarpit.conf
 
-	dodir /opt/bin
-	dosym /local/adm/laboule/bin/laboule /opt/bin/laboule
-	dosym /local/adm/laboule/bin/laboule-tarpit /opt/bin/laboule-tarpit
-}
+	insinto "${LABOULE_HOME}"
+	doins usr/doc/*
+	newins README README
 
-pkg_setup() {
-	enewgroup laboule
-	enewuser laboule -1 -1 /var/log/laboule laboule
+	exeinto /usr/bin
+	newexe bin/laboule laboule
+	newexe bin/laboule-tarpit laboule-tarpit
 }

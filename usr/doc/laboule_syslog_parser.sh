@@ -23,7 +23,7 @@ done
 ## send remote login attempts to laboule
 #filter f_auth { facility(auth, authpriv); };
 #destination laboule_syslog_parser {
-#    program("su -s /bin/bash laboule -c /local/FIXME/laboule_syslog_parser.sh" template("${MSGHDR}${MSG}\n"));
+#    program("su -s /bin/bash laboule -c /usr/share/laboule/laboule_syslog_parser.sh" template("${MSGHDR}${MSG}\n"));
 #};
 #log { source(s_local); filter(f_auth); destination(laboule_syslog_parser); };
 

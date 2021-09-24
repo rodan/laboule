@@ -41,10 +41,10 @@
    - conntrack-tools (used by one of the sample log parsers) - optional
    - any firewall software can be used, provided that some glue logic is provided:
       after firewall (re)start the following scripts are run:
-        /local/adm/laboule/bin/laboule --init
-        /local/adm/laboule/bin/laboule-tarpit --init
-        /local/adm/laboule/bin/laboule --init6
-        /local/adm/laboule/bin/laboule-tarpit --init6
+        /usr/bin/laboule --init
+        /usr/bin/laboule-tarpit --init
+        /usr/bin/laboule --init6
+        /usr/bin/laboule-tarpit --init6
         (run only those that apply in your use case)
         (these end up in /etc/shorewall*/start if shorewall is used)
       and make sure you locate the proper parent chain (calling_chain) into which
